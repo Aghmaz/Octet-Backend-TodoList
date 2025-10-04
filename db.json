@@ -1,10 +1,20 @@
-[
-  {
-    "id": "c0e88fe3-dccc-4513-9553-4daeb94ae23d",
-    "text": "Software Engineer"
-  },
-  {
-    "id": "82a4c111-d03f-4057-a904-725e02aeb175",
-    "text": "Frontend Engineer"
-  }
-]
+{
+  "files": [
+    {
+      "id": 1759594629838,
+      "filename": "file-1759594629808-406344972",
+      "originalName": "v0.app_chat_resume-builder-with-json-vMYvMICzSZn_b=v0-preview-b_KH8wjClQllk&f=1&path=%2F (1).png",
+      "path": "/uploads/file-1759594629808-406344972",
+      "mimeType": "image/png",
+      "date": "2025-10-04T16:17:09.838Z"
+    },
+    {
+      "id": 1759595047344,
+      "filename": "file-1759595047245-611577598",
+      "originalName": "senior-aghmaz-2025.png",
+      "path": "/uploads/file-1759595047245-611577598",
+      "mimeType": "image/png",
+      "date": "2025-10-04T16:24:07.344Z"
+    }
+  ]
+}

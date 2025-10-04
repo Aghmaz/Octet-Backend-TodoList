@@ -1,6 +1,10 @@
 import express from "express";
 import cors from "cors";
 import todoRoute from "./routes/todoRoutes.js";
+import upload from "./middleware/uploadMidleware.js";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 const app = express();
 app.use(express.json());
 // app.use(cors());
@@ -11,7 +15,100 @@ app.use(
     credentials: true,
   })
 );
+app.use("/uploads", express.static("uploads")); //express default middleware
 app.use("/api/todos", todoRoute);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// db.json lives at server/db.json (same directory as server.js)
+const seedPath = path.join(__dirname, "db.json");
+
+// On Vercel, writeable filesystem is /tmp; locally we can use the seed file directly
+const isVercel = !!process.env.VERCEL;
+const runtimePath = isVercel ? "/tmp/db.json" : seedPath;
+
+function ensureRuntimeDb() {
+  if (!isVercel) return;
+  // If /tmp/db.json does not exist, seed it from bundled db.json
+  if (!fs.existsSync(runtimePath)) {
+    const seed = fs.readFileSync(seedPath, "utf8");
+    fs.writeFileSync(runtimePath, seed);
+  }
+}
+
+function readDb() {
+  ensureRuntimeDb();
+  const p = isVercel ? runtimePath : seedPath;
+  const data = fs.readFileSync(p, "utf8");
+  return JSON.parse(data || "[]");
+}
+
+function writeDb(data) {
+  if (isVercel) {
+    ensureRuntimeDb();
+    fs.writeFileSync(runtimePath, JSON.stringify(data, null, 2));
+  } else {
+    fs.writeFileSync(seedPath, JSON.stringify(data, null, 2));
+  }
+}
+
+// End Point or API
+app.post("/upload", upload.single("file"), (req, res) => {
+  const db = readDb();
+  const fileData = {
+    id: Date.now(),
+    filename: req.file.filename,
+    originalName: req.file.originalname,
+    path: `/uploads/${req.file.filename}`,
+    mimeType: req.file.mimetype,
+    date: new Date().toISOString(), // server time use
+  };
+  db.files.push(fileData);
+  writeDb(db);
+  res.status(200).json({ success: true, file: fileData });
+});
+
+// get files
+app.get("/files", (req, res) => res.json(readDb().files));
+
+// Serve uploaded files with proper headers
+app.get("/uploads/:filename", (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, "uploads", filename);
+
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "File not found" });
+  }
+
+  // Set proper headers for different file types
+  const ext = path.extname(filename).toLowerCase();
+  const mimeTypes = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".pdf": "application/pdf",
+    ".txt": "text/plain",
+    ".doc": "application/msword",
+    ".docx":
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  };
+
+  const mimeType = mimeTypes[ext] || "application/octet-stream";
+
+  res.setHeader("Content-Type", mimeType);
+  res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+
+  // For images, allow caching
+  if (mimeType.startsWith("image/")) {
+    res.setHeader("Cache-Control", "public, max-age=31536000");
+  }
+
+  res.sendFile(filePath);
+});
 
 // Root HTML page for backend confirmation and route listing
 app.get("/", (req, res) => {
